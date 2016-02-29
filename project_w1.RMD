@@ -1,0 +1,87 @@
+Reproducible Research: Peer Assessment 1
+
+## Loading  data
+
+path <- "D:/Coursera/ReproducibleResearch/"   
+setwd(path)
+unzip(zipfile="repdata-data-activity.zip")
+activityData <- read.csv("activity.csv")
+
+What is mean total number of steps taken per day?
+
+## Histogram of the total number of steps taken each day after missing values are imputed
+sumOfSteps_imputed <- tapply(activityData$steps, activityData$date, FUN=sum)
+qplot(sumOfSteps_imputed, binwidth=1000, xlab="total number of steps taken each day")
+
+sumOfSteps_imputed_mean <- mean(sumOfSteps_imputed)
+sumOfSteps_imputed_median <- median(sumOfSteps_imputed)
+
+paste(sumOfSteps_imputed_mean)
+paste(sumOfSteps_imputed_median)
+
+What is the average daily activity pattern?
+
+library(ggplot2)
+avg1 <- aggregate(x=list(steps=activityData$steps), by=list(interval=activityData$interval),
+                      FUN=mean, na.rm=TRUE)
+ggplot(data=avg1, aes(x=interval, y=steps)) +
+  geom_line() +
+  xlab("5-minute interval") +
+  ylab("avg number of steps taken")
+
+## The 5-minute interval that, on average, contains the maximum number of steps
+averages[which.max(avg1$steps),]
+
+
+Imputing missing values. 
+
+# How many missing
+table(is.na(activityData$steps) )
+All of the missing values are filled in with mean value for that 5-minute interval.
+
+# Replace each missing value with the mean value of its 5-minute interval
+
+fill_val <- function(steps, interval) {
+  filled <- NA
+  if (!is.na(steps))
+    filled <- c(steps)
+  else
+    filled <- (averages[averages$interval==interval, "steps"])
+  return(filled)
+}
+
+activityData$steps <- mapply(fill_val, activityData$steps, activityData$interval)
+
+## Using the NA filled data set, plot histogram of the total number of steps taken each day and calculate the mean and median total number of steps.
+
+sumOfSteps_imputed <- tapply(activityData$steps, activityData$date, FUN=sum)
+qplot(sumOfSteps_imputed, binwidth=1000, xlab="total number of steps taken each day")
+
+sumOfSteps_imputed_mean <- mean(sumOfSteps_imputed)
+sumOfSteps_imputed_median <- median(sumOfSteps_imputed)
+
+paste(sumOfSteps_imputed_mean)
+paste(sumOfSteps_imputed_median)
+
+## Mean and median values are higher after imputing missing data.
+## Are there differences in activity patterns between weekdays and weekends?
+## First, let's find the day of the week for each measurement in the dataset. In this part, we use the dataset with the filled-in values.
+
+weekday_weekend <- function(date) {
+  day <- weekdays(date)
+  if (day %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"))
+    return("weekday")
+  else if (day %in% c("Saturday", "Sunday"))
+    return("weekend")
+  else
+    stop("invalid date")
+}
+
+
+##panel plot containing plots of average number of steps taken on weekdays and weekends.
+
+activityData$day <- sapply(activityData$date, FUN=weekday_weekend)
+aveg2 <- aggregate(steps ~ interval + day, data=activityData, mean)
+
+ggplot(aveg2, aes(interval, steps)) + geom_line() + facet_grid(day ~ .) +
+  xlab("5-minute interval") + ylab("Number of steps")
